@@ -9,6 +9,7 @@ include_directories(
     ${PROJECT_SOURCE_DIR}/inc/test
     ${PROJECT_SOURCE_DIR}/inc/threadpool
     ${PROJECT_SOURCE_DIR}/inc/public
+    ${PROJECT_SOURCE_DIR}/inc/Interview
 )
 
 link_directories(${PROJECT_SOURCE_DIR}/lib)

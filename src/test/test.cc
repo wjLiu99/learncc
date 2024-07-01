@@ -7,95 +7,25 @@
 #include <vector>
 #include <numeric> 
 #include <cstring>
+#include "mvector.h"
+// #include "singleton.h"
+#include <algorithm>
 
-std::once_flag flag;
-void thead_work1(std::string str) {
-    std::cout << "str is " << str << std::endl;
-}
 
-void dosmt() {
-    std::call_once(flag, [](){
-        std::cout << "do something call once." << std::endl;
+
+void myvec_test () {
+    auto v1 = myvector<std::string>();
+    v1.push_back("hello liu");
+    myvector<std::string> v2(v1);
+    v2.push_back("hello wen");
+    myvector<std::string> v3 = v1;
+
+    std::for_each(v2.begin(), v2.end(), [](auto data) {
+        std::cout << data << " ";
     });
-
-    std::cout << "thread id is " << std::this_thread::get_id() << std::endl;
-
 }
-void func1 (int &a) {
-    std::cout << "zuoz" << std::endl;
-    a = 1;
-}
-
-void func1 (int &&aa) {
-    std::cout << "youzi" << std::endl;
-    aa = 12;
-}
-
-template <typename T>
-void func2 (T &&a) {
-    func1(std::forward<T>(a));
-}
-
-class AA {
-public:
-    int *data_ = nullptr;
-    AA() = default;
-    ~AA() {
-        if (nullptr != data_) {
-            delete data_;
-            data_ = nullptr;
-        }
-    }
-    void alloc() {
-        data_ = new int;
-        memset(data_, 0, sizeof(int));
-    }
-    AA (const AA& a) {
-        std::cout << "调用拷贝构造函数" << std::endl;
-        if (data_ == nullptr) {
-            alloc();
-        }
-        memcpy(data_, a.data_, sizeof(int));
-    }
-
-    AA (AA &&a) {
-        std::cout << "调用移动构造函数" << std::endl;
-        if (nullptr != data_) {
-            delete data_;
-        }
-        data_ = a.data_;
-        a.data_ = nullptr;
-    }
-
-    AA &operator= (const AA&a) {
-        std::cout << "调用赋值函数" <<std::endl;
-        if (this == &a) return *this;
-        if (data_ == nullptr) alloc();
-        memcpy(data_, a.data_, sizeof(int));
-        return *this;
-    }
-
-    AA &operator= (AA &&a) {
-        std::cout << "调用移动赋值函数" << std::endl;
-        if (&a == this) return *this;
-        if (nullptr != data_) delete data_;
-        data_ = a.data_;
-        a.data_ = nullptr;
-        return *this;
-    }
-
-};
-AA fun () {
-    AA aa;
-    aa.alloc();
-    *aa.data_ = 8;
-    
-    return aa;
-} 
 int main()
 {   
-    int a = 5;
-    func2(a);
-    func2(5);
+    myvec_test();
     return 0;
 }
