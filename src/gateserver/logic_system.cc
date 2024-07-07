@@ -1,7 +1,7 @@
 #include "logic_system.h"
 #include "http_conn.h"
-
-
+#include "verify_grpc_client.h"
+#include "msg.pb.h"
 void logic_system::reg_gethandler (std::string url, http_handler handler) {
     get_handlers_.insert(std::make_pair(url, handler));
 }
@@ -38,8 +38,12 @@ logic_system::logic_system () {
         }
         
         auto email = src_root["email"].asString();
+
+        get_verify_rsp rsp = verify_grpc_client::get_instance()->get_verify_code(email);
+
+
         std::cout << "email is :" << email << std::endl;
-        root["err"] = SUCCESS;
+        root["err"] = rsp.error();
         root["email"] = src_root["email"];
         std::string jsonstr = root.toStyledString();
         beast::ostream(conn->res_.body()) << jsonstr;

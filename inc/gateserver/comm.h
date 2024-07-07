@@ -12,6 +12,12 @@
 #include <json/json.h>
 #include <json/value.h>
 #include <json/reader.h>
+
+#include <boost/property_tree/ptree.hpp>  
+#include <boost/property_tree/ini_parser.hpp>  
+#include <boost/filesystem.hpp>   
+#include <fstream> 
+
 namespace beast = boost::beast;         
 namespace http = beast::http;           
 namespace net = boost::asio;            
@@ -23,4 +29,6 @@ enum errcode {
     ERR_RPC = -2,
 };
 
+class conf_mgr;
+extern conf_mgr cfg_mgr;
 #endif
