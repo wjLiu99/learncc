@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package message;
+service verify_service {
+  rpc get_verify_code (get_verify_req) returns (get_verify_rsp) {}
+}
+message get_verify_req {
+  string email = 1;
+}
+message get_verify_rsp {
+  int32 error = 1;
+  string email = 2;
+  string code = 3;
+}

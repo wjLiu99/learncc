@@ -1,0 +1,6 @@
+.vscode
+bin/
+build/
+src/Interview
+inc/Interview
+src/verify_server/node_modules
