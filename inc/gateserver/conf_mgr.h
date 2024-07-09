@@ -3,7 +3,10 @@
 #include "comm.h"
 
 struct section_info {
+
     section_info () {}
+
+    
     ~section_info () {section_data_.clear();}
 
     section_info (const section_info& src) {
@@ -15,6 +18,7 @@ struct section_info {
             return *this;
         }
         section_data_ = src.section_data_;
+        return *this;
     }
 
     std::string operator[] (const std::string &key) {
@@ -41,21 +45,17 @@ public:
         return conf_map_[section];
     }
 
-    conf_mgr (const conf_mgr &src) {
-        conf_map_ = src.conf_map_;
+    static conf_mgr& get_instance () {
+        static conf_mgr instance_;
+        return instance_;
     }
 
-    conf_mgr & operator= (const conf_mgr &src) {
-        if (this == &src) {
-            return *this;
-        }
-
-        conf_map_ = src.conf_map_;
-    }
-
-    conf_mgr();
+    conf_mgr (const conf_mgr &src) = delete;
+    conf_mgr & operator= (const conf_mgr &src) = delete;
+    
 
 private:
+    conf_mgr();
     std::map<std::string, section_info> conf_map_;
 };
 

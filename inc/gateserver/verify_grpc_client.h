@@ -14,6 +14,79 @@ using message::get_verify_req;
 using message::get_verify_rsp;
 using message::verify_service;
 
+
+
+//rpc连接池
+class rpc_pool {
+
+public:
+    rpc_pool(std::size_t size, std::string host, std::string port): pool_size_(size), 
+            host_(host), port_(port), stop_(false) {
+        for (size_t i = 0; i < pool_size_; ++i) {
+            std::shared_ptr<Channel> channel = grpc::CreateChannel(host+":"+ port,
+            grpc::InsecureChannelCredentials());
+
+            //返回的是一个unique_ptr类型，为什么可以push，返回的是一个右值，可以移动构造
+            conn_.push(verify_service::NewStub(channel));
+            //这样不行，m是一个左值，uniqueptr没有拷贝构造函数
+            // auto m = verify_service::NewStub(channel);
+            // conn_.push(m);
+        }      
+    }
+
+    ~rpc_pool () {
+        std::lock_guard<std::mutex> lk(mtx_);
+        close();
+        while (!conn_.empty()) {
+            conn_.pop();
+        }
+    }
+    //取出一个连接
+    std::unique_ptr<verify_service::Stub> get_conn () {
+        std::unique_lock<std::mutex> lk(mtx_);
+        cond_.wait(lk, [this]{
+            if (stop_) {
+                return true;
+            }
+            return !conn_.empty();
+        });
+
+        if (stop_) {
+            return nullptr;
+        }
+        //unique只能移动
+        auto conn = std::move(conn_.front());
+        conn_.pop();
+        return conn;
+    }
+
+    void put_conn (std::unique_ptr<verify_service::Stub> conn) {
+        std::lock_guard<std::mutex> lk(mtx_);
+        if (stop_) {
+            return;
+        }
+        //归还一个链接，通知线程
+        conn_.push(std::move(conn));
+        cond_.notify_one();
+    }
+    void close () {
+        stop_ = true;
+        cond_.notify_all();
+    }
+
+private:
+    
+    std::size_t pool_size_;
+    std::string host_;
+    std::string port_;
+    std::atomic<bool> stop_;
+    std::queue<std::unique_ptr<verify_service::Stub>> conn_;    //可以使用链表实现队列，头尾分开处理
+    std::mutex mtx_;
+    std::condition_variable cond_;
+};
+
+
+
 class verify_grpc_client : public Singleton<verify_grpc_client> {
     friend class Singleton<verify_grpc_client>;
 public:
@@ -22,10 +95,15 @@ public:
         get_verify_rsp rsp;
         get_verify_req req;
         req.set_email(email);
-        Status status = stub_->get_verify_code(&context, req, &rsp);
+        //从连接池取出连接
+        auto stub = pool_->get_conn();
+        Status status = stub->get_verify_code(&context, req, &rsp);
+        //成功失败都要归还连接
         if (status.ok()) {
+            pool_->put_conn(std::move(stub));
             return rsp;
         } else {
+            pool_->put_conn(std::move(stub));
             rsp.set_error(ERR_RPC);
             return rsp;
         }   
@@ -33,11 +111,12 @@ public:
     }
 private:
     verify_grpc_client () {
-        std::shared_ptr<Channel> channel = grpc::CreateChannel("0.0.0.0:50051",
-        grpc::InsecureChannelCredentials());
-        stub_ = verify_service::NewStub(channel);
+        auto& gCfgMgr = conf_mgr::get_instance();
+        std::string host = gCfgMgr["verify_server"]["host"];
+        std::string port = gCfgMgr["verify_server"]["port"];
+        pool_.reset(new rpc_pool(5, host, port));
     }
-    
-    std::unique_ptr<verify_service::Stub> stub_;
+    std::unique_ptr<rpc_pool> pool_;
+    // std::unique_ptr<verify_service::Stub> stub_;  //多线程访问stub会有隐患
 };
 #endif

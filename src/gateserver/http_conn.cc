@@ -102,7 +102,7 @@ void http_conn::parse_getparam() {
 
 
 //socket只有移动构造
-http_conn::http_conn (tcp::socket s) : socket_(std::move(s)){
+http_conn::http_conn (boost::asio::io_context &ioc) : socket_(ioc){
 
 } 
 

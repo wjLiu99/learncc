@@ -5,9 +5,11 @@ class logic_system;
 class http_conn :public std::enable_shared_from_this<http_conn> {
     friend class logic_system;
 public:
-    http_conn(tcp::socket socket);
+    http_conn(boost::asio::io_context &ioc);
     void start();
-
+    tcp::socket &get_socket () {
+        return socket_;
+    }
 private:
     void parse_getparam();
     void check_tmo();   //检测是否超时

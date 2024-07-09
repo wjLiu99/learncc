@@ -14,8 +14,9 @@ protected:
 
 public:
     static std::shared_ptr<T> get_instance() {
-        std::once_flag flag;
-        std::call_once(flag, [](){
+        //这里没有声明静态就错了
+        static std::once_flag flag;
+        std::call_once(flag, [&](){
             instance_ = std::shared_ptr<T>(new T); //为什么用new，不用make_shared
 
         });

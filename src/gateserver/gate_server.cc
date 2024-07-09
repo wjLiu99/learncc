@@ -5,10 +5,13 @@
 #include "comm.h"
 #include "cserver.h"
 #include "conf_mgr.h"
+#include <hiredis/hiredis.h>
+
 int main()
 {
 
-	conf_mgr cfg_mgr;
+
+	conf_mgr &cfg_mgr = conf_mgr::get_instance();
 	std::string gate_port_str = cfg_mgr["gate_server"]["port"];
 	unsigned short gate_port = atoi(gate_port_str.c_str());
 	try
@@ -34,5 +37,6 @@ int main()
 		return EXIT_FAILURE;
 	}
 
-
+	
 }
+

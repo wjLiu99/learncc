@@ -31,4 +31,5 @@ target_link_libraries(  ${PROJECT_NAME}
                         ${_PROTOBUF_LIBPROTOBUF} 
                         boost_filesystem     
                         z 
-                        jsoncpp )
+                        jsoncpp 
+                        hiredis )
