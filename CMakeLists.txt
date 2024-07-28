@@ -23,7 +23,7 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
 # add_subdirectory(src/test)
 # add_subdirectory(src/threadpool)
-# add_subdirectory(src/concurrent)
+add_subdirectory(src/concurrent)
 # add_subdirectory(src/co_server)
 # add_subdirectory(src/net_learn)
 # add_subdirectory(src/gateserver)

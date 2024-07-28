@@ -159,8 +159,3 @@ void first_method() {
     func1(future_tmp);
     func2(future_tmp);
 }
-// int main () {
-    
-//     std::cout << "main" << std::endl;
-    
-// }

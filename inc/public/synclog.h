@@ -1,5 +1,5 @@
-#ifndef __ASYNC_LOG__
-#define __ASYNC_LOG__
+#ifndef __SYNC_LOG__
+#define __SYNC_LOG__
 
 #include <thread>
 #include <condition_variable>
@@ -46,18 +46,17 @@ public:
 };
 
 
-class async_log {
+class sync_log {
 
 public:
     
-    static async_log& get_instance(){
-        static async_log instance;
+    static sync_log& get_instance(){
+        static sync_log instance;
         return instance;
     }
 
-    ~async_log() {
-        stop();
-        wock_thread_.join();
+    ~sync_log() {
+
         std::cout << "exit success" << std::endl;
     }
 
@@ -66,68 +65,30 @@ public:
         return std::any(value);
     }
 
-    //C++11
-    template<typename Arg, typename ...Args>
-    void task_enqueue(std::shared_ptr<log_task> task, Arg&& arg, Args&&... args){
-        task->log_data_.push(std::any(arg));
-        task_enqueue(task,std::forward<Args>(args)...);
-    }
-
-    template<typename Arg>
-    void task_enqueue(std::shared_ptr<log_task> task, Arg&& arg){
-        task->log_data_.push(std::any(arg));
-    }
+ 
 
     //可变参数列表，异步写
     template<typename...  Args>
-    void async_write(_loglevel level , Args&&... args) {
+    void sync_write(_loglevel level , Args&&... args) {
         auto task = std::make_shared<log_task>();
         //折叠表达式依次将可变参数写入队列,C++17
         (task->log_data_.push(args), ...);
-        //如不支持C++17 用这个版本入队
-        //task_enqueue(task, args...);
         task->level_ = level;
-        std::unique_lock<std::mutex> lock(mtx_);
-        queue_.push(task);
-        bool notify = (queue_.size() == 1)?true:false;
-        lock.unlock();
-        // 通知等待的线程有新的任务可处理
-        if(notify){
-                empty_cond_.notify_one();
-        }
+        process(task);
+       
 
     }
 
-    void stop(){
-        std::unique_lock<std::mutex> lock(mtx_);
-        stop_ = true;
-        empty_cond_.notify_one();
-    }
+
 
 
 
 private:
 
-    async_log() :stop_(false) {
-        wock_thread_ = std::thread([this]() {
-            for (;;) {
-                std::unique_lock<std::mutex> lock(mtx_);
-                while (queue_.empty() && !stop_) {
-                    empty_cond_.wait(lock);
-                }
-                if (stop_) {
-                    return;
-                }
-                auto logtask = queue_.front();
-                queue_.pop();
-                lock.unlock();
-                process(logtask);
-            }
-            });
-    }
+    sync_log() {};
 
-    async_log& operator =(const async_log&) = delete;
-    async_log(const async_log&) = delete;
+    sync_log& operator =(const sync_log&) = delete;
+    sync_log(const sync_log&) = delete;
 
     //转换成字符串
     bool to_str(const std::any & data,  std::string& str) {
@@ -230,32 +191,27 @@ private:
             return result;
         }
 
-    std::condition_variable empty_cond_;
-    std::queue<std::shared_ptr<log_task> >  queue_;
-    bool stop_;
-    std::mutex mtx_;
-    std::thread  wock_thread_;
 };
 
 
 template<typename ... Args>
 void   _log3(Args&&... args) {
-    async_log::get_instance().async_write(ERROR, std::forward<Args>(args)...);
+    sync_log::get_instance().sync_write(ERROR, std::forward<Args>(args)...);
     }
 
 template<typename ... Args>
     void  _log2(Args&&... args) {
-    async_log::get_instance().async_write(WARNING, std::forward<Args>(args)...);
+    sync_log::get_instance().sync_write(WARNING, std::forward<Args>(args)...);
 }
 
 template<typename ... Args>
     void  _log1(Args&&... args) {
-    async_log::get_instance().async_write(INFO, std::forward<Args>(args)...);
+    sync_log::get_instance().sync_write(INFO, std::forward<Args>(args)...);
 }
 
 template<typename ... Args>
     void  _log0(Args&&... args) {
-    async_log::get_instance().async_write(DEBUG, std::forward<Args>(args)...);
+    sync_log::get_instance().sync_write(DEBUG, std::forward<Args>(args)...);
 }
 
 
