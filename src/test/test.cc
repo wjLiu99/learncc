@@ -9,7 +9,8 @@
 #include <cstring>
 #include "mvector.h"
 // #include "singleton.h"
-#include <algorithm>
+#include <algorithm> 
+#include <memory>
 
 
 
@@ -24,8 +25,10 @@ void myvec_test () {
         std::cout << data << " ";
     });
 }
+
 int main()
 {   
+ 
     myvec_test();
     return 0;
 }

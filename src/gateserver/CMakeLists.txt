@@ -8,7 +8,7 @@ file(GLOB_RECURSE SRC_LIST "*.cc")
 
 include_directories(
 
-    ${PROJECT_SOURCE_DIR}/inc/gateserver
+    ${CMAKE_SOURCE_DIR}/inc/gateserver
 )
 
 find_package(Threads REQUIRED)
