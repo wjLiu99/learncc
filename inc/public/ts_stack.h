@@ -23,6 +23,7 @@ public:
         data = other.data;   
     }
     threadsafe_stack& operator=(const threadsafe_stack&) = delete;
+    //此处使用拷贝构造，考虑到空间不足可能会丢失数据，可以采用vector判断size和capacity大小，相同就手动扩容保证数据安全
     void push(T new_value)
     {
         std::lock_guard<std::mutex> lock(m);
@@ -33,7 +34,7 @@ public:
         std::lock_guard<std::mutex> lock(m);
         //出栈检查是否为空，为空返回空指针
         if (data.empty()) return nullptr;
-        //改动栈容器前设置返回值
+        //改动栈容器前设置返回值，使用对象构造智能指针需要拷贝一份，可能会导致空间不足，但是不会丢数据
             std::shared_ptr<T> const res(std::make_shared<T>(data.top()));    
             data.pop();
         return res;
@@ -44,7 +45,7 @@ public:
         std::lock_guard<std::mutex> lock(m);
         // pop空栈返回空栈异常
         if (data.empty()) throw empty_stack();
-        value = data.top();
+        value = data.top(); //拷贝赋值
         data.pop();
     }
     

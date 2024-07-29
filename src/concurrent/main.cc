@@ -1,11 +1,15 @@
 #include "synclog.h"
 #define LOG_LEVEL DEBUG
+extern void ring_queue_test();
+extern void ulring_queue_test();
+extern void ulring_queue_test1();
+extern void ex_test();
+extern void queue_test();
+extern void threadsafe_queue_l_test();
+extern void hash_test();
 int main(int argc, char const *argv[])
 {
-    LOG_ERROR(LOG_LEVEL, "hello {}", "world");
-    LOG_WARNING(LOG_LEVEL, "hello {}", 5);
-    LOG_DEBUG(LOG_LEVEL, "eee");
-    LOG_INFO(LOG_LEVEL, "dddd");
-    while(1);
+    hash_test ();
+
     return 0;
 }
