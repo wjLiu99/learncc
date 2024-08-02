@@ -264,4 +264,248 @@ private:
 
 
 
+//无锁队列实现
+template<typename T>
+class lock_free_queue
+{
+private:
+    //线程进入线程外部计数+1，线程离开，内部引用计数-1
+    struct node_counter
+    {
+        unsigned internal_count : 30;
+        // 外部指针计数，最大值为2，记录节点的next指针和tail指针
+        unsigned external_counters : 2;
+    };
+
+    struct node;
+
+    struct counted_node_ptr
+    {
+
+        //构造初始化各成员
+        counted_node_ptr():external_count(0), ptr(nullptr) {}
+        int external_count;
+        node* ptr;
+    };
+
+    struct node
+    {
+        std::atomic<T*> data;
+        std::atomic<node_counter> count;
+        //⇽---  1
+        std::atomic<counted_node_ptr> next;
+
+        node(int external_count = 2)
+        {
+            node_counter new_count;
+            new_count.internal_count = 0;
+            //⇽---  4
+            new_count.external_counters = external_count;
+            count.store(new_count);
+
+            counted_node_ptr node_ptr;
+			node_ptr.ptr = nullptr;
+			node_ptr.external_count = 0;
+
+            next.store(node_ptr);
+        }
+
+        //减少内部计数，为离开的线程数
+        void release_ref()
+        {
+            node_counter old_counter =
+                count.load(std::memory_order_relaxed);
+            node_counter new_counter;
+            do
+            {
+                new_counter = old_counter;
+                --new_counter.internal_count;
+            }
+            while (!count.compare_exchange_strong(
+                old_counter, new_counter,
+                std::memory_order_acquire, std::memory_order_relaxed));
+            // 满足条件删除节点
+            if (!new_counter.internal_count &&
+                !new_counter.external_counters)
+            {
+                delete this
+            }
+        }
+    };
+
+    std::atomic<counted_node_ptr> head;
+
+    std::atomic<counted_node_ptr> tail;
+
+    // 设置新的尾节点
+    void set_new_tail(counted_node_ptr& old_tail,
+        counted_node_ptr const& new_tail)
+    {
+        node* const current_tail_ptr = old_tail.ptr;
+        // 此处仅有一个线程能设置tail为new_tail，失败的会更新old_tail为tail的新值
+        // 为防止失败的线程重试导致tail被再次更新所以添加了后面的&&判断，这时候尾部的node节点已经不是原来的node节点了，会跳出循环
+		//如果tail和old_tail不等说明引用计数不同或者tail已经被移动，如果tail已经被移动那么old_tail的ptr和current_tail_ptr不同，则可以直接退出。
+		//所以一旦tail被设置为new_tail，那么另一个线程在重试时判断tail和old_tail不等，会修改old_tail, 此时old_tail已经和current_tail不一致了，所以没必要再重试。
+       //如不加后续判断， 会造成重复设置newtail，引发多插入节点的问题。
+        while (!tail.compare_exchange_weak(old_tail, new_tail) &&
+            old_tail.ptr == current_tail_ptr);
+        // 设置新的尾节点成功
+        if (old_tail.ptr == current_tail_ptr)
+            //插入成功，减少外部指针计数和外部线程计数
+            free_external_counter(old_tail);
+        else
+            //插入失败，减少内部计数
+            current_tail_ptr->release_ref();
+    }
+    //外部指针 -1 内部计数 + 正在操作的线程数
+    static void free_external_counter(counted_node_ptr& old_node_ptr)
+    {
+        node* const ptr = old_node_ptr.ptr;
+        int const count_increase = old_node_ptr.external_count - 2;
+        node_counter old_counter =
+            ptr->count.load(std::memory_order_relaxed);
+        node_counter new_counter;
+        do
+        {
+            new_counter = old_counter;
+            // 减少外部指针数
+            --new_counter.external_counters;
+            // 操作线程数内部计数增加
+            new_counter.internal_count += count_increase;
+        }
+        // 需要替换整个count节点
+        while (!ptr->count.compare_exchange_strong(
+            old_counter, new_counter,
+            std::memory_order_acquire, std::memory_order_relaxed));
+            // 如果指针外部计数和操作线程计数为0可以删除节点
+        if (!new_counter.internal_count &&
+            !new_counter.external_counters)
+        {
+            // 删除该节点
+            delete ptr;
+        }
+
+    }
+
+    //增加node_ptr中的外部引用计数，为操作该节点的线程数
+    static void increase_external_count(
+        std::atomic<counted_node_ptr>& counter,
+        counted_node_ptr& old_counter)
+    {
+        counted_node_ptr new_counter;
+        do
+        {
+            new_counter = old_counter;
+            ++new_counter.external_count;
+        } while (!counter.compare_exchange_strong(
+            old_counter, new_counter,
+            std::memory_order_acquire, std::memory_order_relaxed));
+        old_counter.external_count = new_counter.external_count;
+    }
+
+public:
+    lock_free_queue() {
+       
+		counted_node_ptr new_next;
+		new_next.ptr = new node();
+		new_next.external_count = 1;
+		tail.store(new_next);
+		head.store(new_next);
+    }
+
+    ~lock_free_queue() {
+        while (pop());
+        auto head_counted_node = head.load();
+        delete head_counted_node.ptr;
+    }
+
+    void push(T new_value)
+    {
+        std::unique_ptr<T> new_data(new T(new_value));
+        counted_node_ptr new_next;
+        new_next.ptr = new node;
+        new_next.external_count = 1;
+        counted_node_ptr old_tail = tail.load();
+        for (;;)
+        {
+            //增加外部线程计数
+            increase_external_count(tail, old_tail);
+            T* old_data = nullptr;
+            //设置尾节点的数据域
+            if (old_tail.ptr->data.compare_exchange_strong(
+                old_data, new_data.get()))
+            {
+                counted_node_ptr old_next;
+                counted_node_ptr now_next = old_tail.ptr->next.load();
+                // 链接新的节点，可能失败是因为别的节点辅助完成了新节点的设置，新的尾节点是一个空的节点，所以任何线程设置都可以
+                if (!old_tail.ptr->next.compare_exchange_strong(
+                    old_next, new_next))
+                {
+                    // 设置失败删除新节点
+                    delete new_next.ptr;
+                    new_next = old_next;   
+                }
+                //设置成功释放指针引用计数和线程引用计数，失败则释放线程引用计数
+                set_new_tail(old_tail, new_next);
+                //释放智能指针指向的资源但是不析构
+                new_data.release();
+                break;
+            }
+            else    // 尾节点数据设置失败，辅助另一线程push操作，更新尾节点
+            {
+                counted_node_ptr old_next ;
+     
+                if (old_tail.ptr->next.compare_exchange_strong(
+                    old_next, new_next))
+                {
+                    old_next = new_next;
+                    new_next.ptr = new node;
+                }
+                set_new_tail(old_tail, old_next);
+            }
+        }
+
+    }
+
+
+    std::unique_ptr<T> pop()
+    {
+        counted_node_ptr old_head = head.load(std::memory_order_relaxed);
+            for (;;)
+            {
+                increase_external_count(head, old_head);
+                node* const ptr = old_head.ptr;
+                if (ptr == tail.load().ptr)
+                {
+                    //头尾相等说明队列为空，要减少内部引用计数，线程退出
+                    ptr->release_ref();
+                    return std::unique_ptr<T>();
+                }
+                //  队列非空
+                counted_node_ptr next = ptr->next.load();
+                if (head.compare_exchange_strong(old_head, next))
+                {
+                    T* const res = ptr->data.exchange(nullptr);
+                    //减少指针计数和线程计数
+                    free_external_counter(old_head);
+                    return std::unique_ptr<T>(res);
+                }
+                //减少线程计数
+                ptr->release_ref();
+            }
+    }
+
+
+};
+
+/*
+    为什么需要外部指针计数是因为pop可能会操作到尾节点，
+    无锁栈中push不需要增加引用计数
+    无锁队列中由于push和pop在不同的节点，但pop可能操作到正在push的节点，
+    如果push已经设置好数据域还没有链接新节点指针，这时候是可以pop该数据了，如果push的时候不增加引用计数pop就有可能会删除掉该节点
+    但是push时增加引用计数又不能和无锁栈一样操作完毕减少内部引用计数然后判断删除节点，因为push的时候肯定不能删除节点
+    所以要添加一个新的给尾节点push引用计数的引用计数，该计数不为0也不能删除节点，push退出后原来线程的引用计数会为0但是新的外部指针引用计数不为0也是不会删除节点的
+*/
+
+
 #endif
