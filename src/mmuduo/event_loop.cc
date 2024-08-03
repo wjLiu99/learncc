@@ -99,6 +99,8 @@ void event_loop::queue_in_loop (functor cb) {
         std::lock_guard<std::mutex> lk(mtx_);
         pending_functors_.emplace_back(cb);
     }
+    // 如果不是eventloop线程需要唤醒
+    // 是eventloop线程但是线程正在执行回调，执行完后又会阻塞在epollwait上，所以也需要唤醒
     if (!is_in_loop_thread() || calling_pending_functors_) {
         wakeup();
     }
