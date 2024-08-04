@@ -15,7 +15,12 @@ __thread event_loop *localthread_loop = nullptr;
 const int poller_tmo = 10000;
 
 int create_eventfd () {
-
+    /*
+        eventfd是为了读写而设计的，而不是用于普通文件的读写。
+        eventfd的计数器是一个64位的值，写入的数据量必须足够以容纳这个计数器的新值。
+        如果需要通过eventfd写入数据，必须至少写入8个字节。
+        如果你尝试写入不足8个字节或超过8个字节，你会得到一个EINVAL错误
+    */
     int evfd = ::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC);
     if (evfd < 0) {
         LOG_FATAL("eventfd create failed. errno : %d\n", errno);
@@ -107,7 +112,7 @@ void event_loop::queue_in_loop (functor cb) {
 }
 //eventloop构造函数中给eventfd设置的读回调函数
 void event_loop::handle_read () {
-    uint16_t one = 1;
+    uint64_t one = 1;
     ssize_t n = read(wakeup_, &one, sizeof one);
     if (n != sizeof one) {
         LOG_ERROR("eventloop::handle read error\n");
@@ -115,9 +120,10 @@ void event_loop::handle_read () {
 }
 
 void event_loop::wakeup () {
-    uint16_t one = 1;
-    ssize_t n = write(wakeup_, &one, sizeof one);
-    if (sizeof one != n) {
+    uint64_t one = 1;
+    ssize_t n = ::write(wakeup_, &one, sizeof one);
+    if (sizeof(one) != n) {
+
         LOG_ERROR("eventloop wakeup failed.\n");
     }
 }
