@@ -7,6 +7,7 @@
 #include "noncopyable.h"
 
 // LOG_INFO("%s %d", arg1, arg2)
+#if 0
 #define LOG_INFO(logmsgFormat, ...) \
     do \
     { \
@@ -16,6 +17,9 @@
         snprintf(buf, 1024, logmsgFormat, ##__VA_ARGS__); \
         logger.log(buf); \
     } while(0) 
+#else
+#define LOG_INFO(logmsgFormat, ...)
+#endif
 
 #define LOG_ERROR(logmsgFormat, ...) \
     do \
