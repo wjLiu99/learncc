@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+
+option cc_generic_services = true;
+
+message result_code
+{
+    int32 errcode = 1; 
+    bytes errmsg = 2;
+}
+
+message login_request
+{
+    bytes name = 1;
+    bytes pwd = 2;
+}
+
+message login_response
+{
+    result_code result = 1;
+    bool sucess = 2;
+}
+
+service user_service
+{
+    rpc login(login_request) returns(login_response);
+
+}
