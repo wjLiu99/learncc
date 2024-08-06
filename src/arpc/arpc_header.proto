@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+
+
+enum message_t
+{
+  REQUEST = 0;
+  RESPONSE = 1;
+  UNKNOWN = 2; 
+}
+
+enum error_code
+{
+  SUCCESS = 0;
+  PROTO = 1;
+  SERVICE = 2;
+  METHOD = 3;
+  INVALID_REQUEST = 4;
+  INVALID_RESPONSE = 5;
+  TIMEOUT = 6;
+}
+
+
+message arpc_header
+{
+    message_t type = 1;
+    fixed32 id = 2;
+    bytes service_name = 3;
+    bytes method_name = 4;
+    uint32 args_size = 5;
+    error_code error = 6;
+}
