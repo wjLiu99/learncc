@@ -2,8 +2,8 @@
 #define _LOGIC_SYSTEM_H_
 
 #include "comm.h"
-
-//不要在头文件中互相包含，只在头文件中声明类，在源文件中包含
+// 逻辑系统，根据消息id查找处理函数表调用
+// 不要在头文件中互相包含，只在头文件中声明类，在源文件中包含
 class http_conn;
 typedef std::function<void(std::shared_ptr<http_conn>)> http_handler;
 

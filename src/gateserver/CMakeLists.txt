@@ -32,4 +32,5 @@ target_link_libraries(  ${PROJECT_NAME}
                         boost_filesystem     
                         z 
                         jsoncpp 
-                        hiredis )
+                        hiredis
+                        mysqlcppconn )

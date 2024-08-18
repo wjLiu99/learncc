@@ -1,24 +1,19 @@
 #ifndef _COMM_H_
 #define _COMM_H_
-#include <boost/beast/http.hpp>
-#include <boost/beast.hpp>
-#include <boost/asio.hpp>
+
 #include <memory>
 #include <iostream>
 #include <map>
 #include <functional>
 #include "singleton.h"
 #include <unordered_map>
-#include <json/json.h>
-#include <json/value.h>
-#include <json/reader.h>
+
 #include <vector>
 
-#include <boost/property_tree/ptree.hpp>  
-#include <boost/property_tree/ini_parser.hpp>  
-#include <boost/filesystem.hpp>   
+  
 #include <fstream> 
-
+#include <sstream>
+#include <cstring>
 #include <mutex>
 #include <atomic>
 #include <condition_variable>
@@ -26,14 +21,11 @@
 
 #include "conf_mgr.h"
 #include <cassert>
-#include <hiredis/hiredis.h>
+
 
 
 #define CODEPREFIX "code_"
-namespace beast = boost::beast;         
-namespace http = beast::http;           
-namespace net = boost::asio;            
-using tcp = boost::asio::ip::tcp; 
+
 
 enum errcode {
     SUCCESS = 0,
@@ -49,6 +41,23 @@ enum errcode {
 	ERR_PWD_INVAILD = -9,   //密码更新失败
 	ERR_TOKEN = -10,   //Token失效
 	ERR_UID = -11,  //uid无效
+
+	
 };
 
+
+// Defer类
+class Defer {
+public:
+	// 接受一个lambda表达式或者函数指针
+	Defer(std::function<void()> func) : func_(func) {}
+
+	// 析构函数中执行传入的函数
+	~Defer() {
+		func_();
+	}
+
+private:
+	std::function<void()> func_;
+};
 #endif

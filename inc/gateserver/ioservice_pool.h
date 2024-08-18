@@ -2,6 +2,7 @@
 #define _IOSERVER_POOL_H_
 
 #include "comm.h"
+#include <boost/asio.hpp>
 
 class ioservice_pool : public Singleton<ioservice_pool>
 {

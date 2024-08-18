@@ -60,7 +60,7 @@ public:
         return conn;
     }
 
-    void put_conn (std::unique_ptr<verify_service::Stub> conn) {
+    void return_conn (std::unique_ptr<verify_service::Stub> conn) {
         std::lock_guard<std::mutex> lk(mtx_);
         if (stop_) {
             return;
@@ -90,32 +90,10 @@ private:
 class verify_grpc_client : public Singleton<verify_grpc_client> {
     friend class Singleton<verify_grpc_client>;
 public:
-    get_verify_rsp get_verify_code (std::string email) {
-        ClientContext context;
-        get_verify_rsp rsp;
-        get_verify_req req;
-        req.set_email(email);
-        //从连接池取出连接
-        auto stub = pool_->get_conn();
-        Status status = stub->get_verify_code(&context, req, &rsp);
-        //成功失败都要归还连接
-        if (status.ok()) {
-            pool_->put_conn(std::move(stub));
-            return rsp;
-        } else {
-            pool_->put_conn(std::move(stub));
-            rsp.set_error(ERR_RPC);
-            return rsp;
-        }   
+    get_verify_rsp get_verify_code (std::string email);
 
-    }
 private:
-    verify_grpc_client () {
-        auto& gCfgMgr = conf_mgr::get_instance();
-        std::string host = gCfgMgr["verify_server"]["host"];
-        std::string port = gCfgMgr["verify_server"]["port"];
-        pool_.reset(new rpc_pool(5, host, port));
-    }
+    verify_grpc_client ();
     std::unique_ptr<rpc_pool> pool_;
     // std::unique_ptr<verify_service::Stub> stub_;  //多线程访问stub会有隐患
 };

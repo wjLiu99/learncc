@@ -1,7 +1,10 @@
 #ifndef _CSERVER_H_
 #define _CSERVER_H_
 #include "comm.h"
-
+#include <boost/asio.hpp>
+                
+namespace net = boost::asio;            
+using tcp = boost::asio::ip::tcp; 
 
 class cserver : public std::enable_shared_from_this<cserver> {
 public:

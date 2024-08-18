@@ -1,7 +1,7 @@
 #ifndef _SINGLETON_H
 #define _SINGLETON_H
 #include "comm.h"
-
+#include <mutex>
 //单例模版类
 template <typename T>
 class Singleton {
@@ -17,7 +17,7 @@ public:
         //这里没有声明静态就错了
         static std::once_flag flag;
         std::call_once(flag, [&](){
-            instance_ = std::shared_ptr<T>(new T); //为什么用new，不用make_shared
+            instance_ = std::shared_ptr<T>(new T);  //为什么用new，不用make_shared
 
         });
         return instance_;

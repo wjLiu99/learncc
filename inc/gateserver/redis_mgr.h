@@ -2,6 +2,7 @@
 #define _REDIS_MGR_H_
 
 #include "comm.h"
+#include <hiredis/hiredis.h>
 //封装redis连接池
 class redis_conn_pool {
 
@@ -59,7 +60,7 @@ public:
 		return context;
 	}
     //归还一个连接
-    void put_conn(redisContext* context) {
+    void return_conn(redisContext* context) {
 		std::lock_guard<std::mutex> lock(mtx_);
 		conn_.push(context);
 		cond_.notify_one();

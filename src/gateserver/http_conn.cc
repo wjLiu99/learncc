@@ -42,7 +42,7 @@ std::string url_encode(const std::string& str)
     return strTemp;
 }
 
-
+// uri解码成kv键值对
 std::string url_decode(const std::string& str)
 {
     std::string strTemp = "";
@@ -64,7 +64,7 @@ std::string url_decode(const std::string& str)
     return strTemp;
 }
 
-
+// 解析get请求的参数
 void http_conn::parse_getparam() {
     // 提取 URI  
     auto uri = req_.target().to_string();
@@ -110,12 +110,14 @@ void http_conn::start () {
     auto self = shared_from_this();
     http::async_read(socket_, buffer_, req_, [self](beast::error_code err, std::size_t size){
         try {
-            //err可以直接当成bool的变量使用？
+            //error_code重载了类型转换函数
             if (err) {
                 std::cout << "http read err : " << err.message() << std::endl; 
                 return;
             }
+            // 忽略未使用变量
             boost::ignore_unused(size);
+            // 处理接收到的数据
             self->req_handler();
             //启动超时
             self->check_tmo();
@@ -126,27 +128,33 @@ void http_conn::start () {
     });
 }
 
+// 处理http请求
 void http_conn::req_handler() {
+    // 设置http回包为短连接
     res_.version(req_.version());
     res_.keep_alive(false);
-
+    // 如果是get请求
     if (http::verb::get == req_.method()) {
+        // 解析完参数交给logic system处理
         parse_getparam();
         bool success = logic_system::get_instance()->get_handler(get_url_, shared_from_this());
         if (!success) {
+            // 处理错误
             res_.result(http::status::not_found);
             res_.set(http::field::content_type, "text/plain");
             beast::ostream(res_.body()) << "url not found\r\n";
             write_response();
             return;
         }
+        // 处理完成发送回包
         res_.set(http::field::content_type, "text/html");
         res_.result(http::status::ok);
         res_.set(http::field::server, "gate_server");
         write_response();
         return;
     }
-
+    // 处理post请求，http是无状态的服务意味着每个 HTTP 请求都是独立的，服务器不会保存或记住之前请求的状态。每次请求都不依赖于之前的请求信息，服务器处理请求时不会知道之前的请求发生了什么。
+    // 这样就不用使用任务队列，没有多线程并发的安全问题，不会访问到共享资源
     if (http::verb::post == req_.method()) {
         
         bool success = logic_system::get_instance()->post_handler(req_.target().to_string(), shared_from_this());

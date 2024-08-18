@@ -1,6 +1,15 @@
 #ifndef _HTTP_CONN_H_
 #define _HTTP_CONN_H_
 #include "comm.h"
+#include <boost/beast/http.hpp>
+#include <boost/beast.hpp>
+#include <boost/asio.hpp>
+
+namespace beast = boost::beast;         
+namespace http = beast::http;           
+namespace net = boost::asio;            
+using tcp = boost::asio::ip::tcp; 
+
 class logic_system;
 class http_conn :public std::enable_shared_from_this<http_conn> {
     friend class logic_system;
