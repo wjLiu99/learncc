@@ -251,14 +251,18 @@ std::atomic<bool> singleton_atomic::flag_ = false;
 class MyObject {
 public:
     std::string name;
+    int a_;
 
 public:
     // Constructor
-    MyObject(const std::string& n) : name(n) {
+    MyObject(const std::string& n) : name(n), a_(0) {
         std::cout << "MyObject(const std::string& n) '" << name << "'\n";
     }
-    MyObject(const std::string& n , int a) : name(n) {
+    MyObject(const std::string& n , int a) : name(n), a_(a) {
         std::cout << "MyObject(const std::string& n , int a) '" << name << "'\n";
+    }
+    MyObject (int i) : name("default"), a_(i) {
+        std::cout << "MyObject (int &i) '" << name << "'\n";
     }
 
     // Destructor
@@ -267,12 +271,12 @@ public:
     }
 
     // Copy constructor (left value)
-    MyObject(const MyObject& other) : name(other.name) {
+    MyObject(const MyObject& other) : name(other.name), a_(other.a_) {
         std::cout << "MyObject(const MyObject& other) '" << other.name << "' (copy constructor)\n";
     }
 
     // Move constructor (right value)
-    MyObject(MyObject&& other) noexcept : name(std::move(other.name)) {
+    MyObject(MyObject&& other) noexcept : name(std::move(other.name)), a_(other.a_) {
         std::cout << "MyObject(MyObject&& other) '" << name << "' (move constructor)\n";
     }
 
@@ -280,6 +284,7 @@ public:
     MyObject& operator=(const MyObject& other) {
         if (this != &other) {
             name = other.name;
+            a_ = other.a_;
             std::cout << "MyObject& operator=(const MyObject& other) '" << other.name << "' (copy assignment)\n";
         }
         return *this;
@@ -289,11 +294,23 @@ public:
     MyObject& operator=(MyObject&& other) noexcept {
         if (this != &other) {
             name = std::move(other.name);
+            a_ = other.a_;
             std::cout << "MyObject& operator=(MyObject&& other) '" << name << "' (move assignment)\n";
         }
         return *this;
     }
+
+    MyObject & func() {
+        return *this;
+    }
 };
+
+void func_test () {
+    MyObject &ra = MyObject("lll", 2).func();
+    MyObject("aaa", 5);
+    std::cout << ra.a_ << std::endl;
+
+}
 
 
 //用锁实现并发环形队列
@@ -690,11 +707,342 @@ void threadsafe_queue_l_test () {
 
 }
 #include "ts_hash_tbl.h"
+#include<map>
 void hash_test () {
-    ts_hash_tbl<int, MyObject> h;
-    // MyObject o1("hello");
-    h.insert(1, MyObject("hi"));
-    // h.remove(1);
-    h.insert(2, MyObject("hello"));
-    // MyObject o2 =  h.find(1, MyObject(""));
+    // ts_hash_tbl<int, MyObject> h;
+    // // MyObject o1("hello");
+    // h.insert(1, MyObject("hi"));
+    // // h.remove(1);
+    // h.insert(2, MyObject("hello"));
+    // // MyObject o2 =  h.find(1, MyObject(""));
+    std::map<int, MyObject> m;
+    m.emplace(std::piecewise_construct,
+                  std::forward_as_tuple(1),
+                  std::forward_as_tuple("hello", 5));
+}
+#include <set>
+void hash_test1() {
+    std::set<int> removeSet;
+    ts_hash_tbl<int, std::shared_ptr<MyObject>> table;
+    std::thread t1([&]() {
+        for(int i = 0; i < 100; i++)
+        {
+           auto class_ptr =  std::make_shared<MyObject>(i); 
+            table.insert(i, class_ptr);
+        }
+    });
+    std::thread t2([&]() {
+        for (int i = 0; i < 100; )
+        {
+            auto find_res = table.find(i, nullptr);
+            if(find_res)
+            {
+                table.remove(i);
+                removeSet.insert(i);
+                i++;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+    });
+    std::thread t3([&]() {
+        for (int i = 100; i < 200; i++)
+        {
+            auto class_ptr = std::make_shared<MyObject>(i);
+            table.insert(i, class_ptr);
+        }
+        });
+    t1.join();
+    t2.join();
+    t3.join();
+    for(auto & i : removeSet)
+    {
+        std::cout << "remove data is " << i << std::endl;
+    }
+    auto copy_map =  table.get_map();
+    for(auto & i : copy_map)
+    {
+        std::cout << "copy data is " << (i.second->name) << std::endl;
+    }
+}
+
+#include "ts_list.h"
+std::set<int> removeSet;
+void tslist_test ()
+{
+	
+	threadsafe_list<MyObject> thread_safe_list;
+	std::thread t1([&]()
+	{
+		for( int i = 0; i < 100; i++)
+		{
+			MyObject mc(i);
+			thread_safe_list.push_front(mc);
+		}
+		
+	});
+
+
+	std::thread t2([&]()
+	{
+		for ( int i = 0; i < 100; )
+		{
+			
+			auto find_res = thread_safe_list.find_first_if([&]( auto & mc)
+			{
+					return mc.a_ == i;
+			});
+
+			if(find_res == nullptr)
+			{
+				// std::this_thread::sleep_for(std::chrono::milliseconds(10));
+				continue;
+			}
+
+			removeSet.insert(i);
+			i++;
+		}
+	});
+
+	t1.join();
+	t2.join();
+    for(auto & v: removeSet)
+	{
+		std::cout << "remove data is " << v << std::endl;
+	}
+
+}
+
+void tslist_test1()
+{
+    //两个线程插入40000条数据
+    threadsafe_list<MyObject> thread_safe_list;
+    std::thread t1([&]()
+    {
+            for (int i = 0; i < 20000; i++)
+            {
+                MyObject mc(i);
+                thread_safe_list.push_front(mc);
+                std::cout << "push front " << i << " success" << std::endl;
+            }
+    });
+    std::thread t2([&]()
+    {
+            for (int i = 20000; i < 40000; i++)
+            {
+                MyObject mc(i);
+                thread_safe_list.push_back(mc);
+                std::cout << "push back " << i << " success" << std::endl;
+            }
+    });
+    // std::thread t3([&]()
+    // {
+    //         for(int i = 0; i < 40000; )
+    //         {
+    //             bool rmv_res = thread_safe_list.remove_first([&](const MyObject& mc)
+    //                 {
+    //                     return mc.a_ == i;
+    //                 });
+    //             if(!rmv_res)
+    //             {
+    //                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    //                 continue;
+    //             }
+    //             i++;
+    //         }
+    // });
+    t1.join();
+    t2.join();
+    // t3.join();
+    std::cout << "begin for each print...." << std::endl;
+    int count = 0;
+    thread_safe_list.for_each([&](const MyObject& mc)
+        {
+            std::cout << "for each print " << mc.a_ << std::endl;
+            count++;
+        });
+    std::cout << "end for each print...." << count << std::endl;
+}
+
+#include "ts_stack.h"
+void stack_uk_test() {
+    threadsafe_stack_uk<int> lk_free_stack;
+
+    std::set<int>  rmv_set;
+    std::mutex set_mtx;
+
+    std::thread t1([&]() {
+        for (int i = 0; i < 20000; i++) {
+            lk_free_stack.push(i);
+            std::cout << "push data " << i << " success!" << std::endl;
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            }
+        });
+        // std::this_thread::sleep_for(std::chrono::seconds(5));
+
+    std::thread t2([&]() {
+		for (int i = 0; i < 10000;) {
+            auto head = lk_free_stack.pop();
+            if (!head) {
+				std::this_thread::sleep_for(std::chrono::milliseconds(10));
+				continue;
+            }
+			std::lock_guard<std::mutex> lock(set_mtx);
+			rmv_set.insert(*head);
+            std::cout << "pop data " << *head << " success!" << std::endl;
+            i++;
+		}
+      });
+
+	std::thread t3([&]() {
+		for (int i = 0; i < 10000;) {
+			auto head = lk_free_stack.pop();
+            if (!head) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                continue;
+            }
+            std::lock_guard<std::mutex> lock(set_mtx);
+            rmv_set.insert(*head);
+            std::cout << "pop data " << *head << " success!" << std::endl;
+            i++;
+		}
+		});
+
+    t1.join();
+    t2.join();
+    t3.join();
+
+    assert(rmv_set.size() == 20000);
+}
+
+
+void TestRefCountStack() {
+    ref_count_stack<int>  ref_count_stack;
+    std::set<int>  rmv_set;
+    std::mutex set_mtx;
+    std::thread t1([&]() {
+        for (int i = 0; i < 20000; i++) {
+            ref_count_stack.push(i);
+            std::cout << "push data " << i << " success!" << std::endl;
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+        });
+        std::thread t0([&]() {
+        for (int i = 20000; i < 40000; i++) {
+            ref_count_stack.push(i);
+            std::cout << "push data " << i << " success!" << std::endl;
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+        });    
+    std::thread t2([&]() {
+        for (int i = 0; i < 10000;) {
+            auto head = ref_count_stack.pop();
+            if (!head) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                continue;
+            }
+            std::lock_guard<std::mutex> lock(set_mtx);
+            rmv_set.insert(*head);
+            std::cout << "pop data " << *head << " success!" << std::endl;
+            i++;
+        }
+        });
+    std::thread t3([&]() {
+        for (int i = 0; i < 10000;) {
+            auto head = ref_count_stack.pop();
+            if (!head) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                continue;
+            }
+            std::lock_guard<std::mutex> lock(set_mtx);
+            rmv_set.insert(*head);
+            std::cout << "pop data " << *head << " success!" << std::endl;
+            i++;
+        }
+        });
+        std::thread t4([&]() {
+        for (int i = 0; i < 10000;) {
+            auto head = ref_count_stack.pop();
+            if (!head) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                continue;
+            }
+            std::lock_guard<std::mutex> lock(set_mtx);
+            rmv_set.insert(*head);
+            std::cout << "pop data " << *head << " success!" << std::endl;
+            i++;
+        }
+        });
+        std::thread t5([&]() {
+        for (int i = 0; i < 10000;) {
+            auto head = ref_count_stack.pop();
+            if (!head) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                continue;
+            }
+            std::lock_guard<std::mutex> lock(set_mtx);
+            rmv_set.insert(*head);
+            std::cout << "pop data " << *head << " success!" << std::endl;
+            i++;
+        }
+        });
+    t1.join();
+    t2.join();
+    t3.join();
+     t4.join();
+      t5.join();
+       t0.join();
+    std::cout << rmv_set.size() << std::endl;
+    assert(rmv_set.size() == 40000);
+}
+
+void test11 () {
+    while (1) {
+        std::atomic<int> a = 0;
+        int b, c = 2;
+        b = c + 2;
+        c = 2 * b;
+        a.store(1, std::memory_order_relaxed);
+        // std::thread t1([&]{
+        //     a.store(1, std::memory_order_relaxed);
+        // });
+        std::thread t2([&]{
+            int b = a.load(std::memory_order_relaxed);
+            std::cout << c << std::endl;
+            assert(c == 8);
+        });
+        // t1.join();
+        t2.join();
+        // assert(a == 2);
+    }
+}
+//任何内存序都能保证变量的原子操作，只是操作上下文的数据不一定会同步，同步是一种先行，同一原子变量在不同线程中如果修改了另一个线程中再运行可以看到，只是没有同步关系
+//操作的上下文不能同步
+//在同一线程中relaxed能保证先行关系，但是其他的指令编排不一定
+//我的理解是：两个线程对同一原子变量的操作都能互相看见，只要执行了另一线程再读都能看到，只是指令由于指令编排的顺序可能会发生变化，导致操作的上下文执行顺序不确定，导致另一线程不能看到最新的
+//先行，只要先运行了结果就能被看见，同步是一种先行  
+//relaxed内存序对同一原子变量的操作在单线程中有先行关系，多线程中没有先行关系只能保证读到的不会比上次读到的值更旧
+//先行关系 如果先执行另一操作可以读到结果 同步是一种先行关系，顺序先行也是一种先行关系
+//pop和push需要同步的原因是pop需要看到push修改头结点之前拷贝数据的操作，这样pop才能看到有效的数据节点，所以要数据拷贝操作发生在节点修改之前所以需要同步，同步就是同步点上下文的同步
+//但是同一变量在不同线程中relaxed内存序不具有先行的效果，就是修改了另一线程不能立马看到
+//但是relaxed内存序是读另个内存acquire读改写的结果，可以被立马看到
+
+
+//读改写都是能获取到最新的值的  只有读取可能获得旧的值
+
+#include "steal_threadpool.h"
+void steal_test () {
+    steal_thread_pool &p = steal_thread_pool::instance();
+    for (int i = 0; i < 10000; i++) {
+        p.submit([=](){
+            int sum = 0;
+            int t = i;
+        while(t > 0) {
+            sum += i;
+            t--;
+        }
+        std::cout << sum << std::endl;
+    });
+    }
+
+
 }

@@ -9,7 +9,7 @@
 #include <unordered_map>
 #include <sys/mman.h> 
 
-typedef size_t page_id;
+typedef unsigned long long page_id; 
 const size_t NLISTS = 240;   //管理自由链表数组的长度,根据对齐规则计算出来的
 
 const size_t MAXBYTES = 64 * 1024; //ThreadCache最大可以一次分配多大的内存64K

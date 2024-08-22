@@ -10,7 +10,7 @@
 #include <list>
 #include <map>
 #include <iterator>
-
+#include "ts_hash_tbl.h"
 //线程安全的哈希查找表
 template <typename k, typename v, typename Hash = std::hash<k>>
 class ts_hash_tbl {
@@ -39,7 +39,7 @@ private:
             return entry == list_.end() ? default_value : entry->second;
         }
 
-        //添加key，找到更新，没找到添加
+        //添加key，找到更新，没找到添加，支持value移动语义
         template<typename Ty>
         void add (const k &key, Ty &&value) {
             std::unique_lock<std::shared_mutex> lk(mtx_);
@@ -51,6 +51,18 @@ private:
 
             entry->second = std::forward<Ty>(value);
         }
+
+             
+        // void add (const k &key, const v&value) {
+        //     std::unique_lock<std::shared_mutex> lk(mtx_);
+        //     const b_it entry = find_entry(key);
+        //     if (entry == list_.end()) {
+        //         list_.push_back(data(key, value));
+        //         return;
+        //     }
+
+        //     entry->second = value;
+        // }
 
         //删除key
         void remove (const k &key) {
@@ -86,11 +98,16 @@ public:
     v find (const k &key, const v &default_value = v()) {
         return get_bucket(key).value_for(key, default_value);
     }
-    //插入key
+    //插入key,改进版，可以使用移动构造
     template<typename Ty>
     void insert (const k &key, Ty &&arg) {
         return get_bucket(key).add(key, std::forward<Ty>(arg));
     }
+
+    // void insert (const k &key, const v &value) {
+    //     return get_bucket(key).add(key, value);
+    // }
+
     //删除key
     void remove (const k &key) {
         return get_bucket(key).remove(key);
@@ -110,7 +127,7 @@ public:
 		for (unsigned i = 0; i < buckets_.size(); ++i) {
 			//需用typename告诉编译器bucket_type::bucket_iterator是一个类型，以后再实例化
 			//当然此处可简写成auto it = buckets[i]->data.begin();
-			typename bucket_t::b_it it = buckets_[i]->data.begin();
+			typename bucket_t::b_it it = buckets_[i]->list_.begin();
 			for (; it != buckets_[i]->list_.end(); ++it)
 			{
 				res.insert(*it);

@@ -30,7 +30,10 @@ public:
  
     threadsafe_list(const threadsafe_list &other) = delete;
     threadsafe_list& operator=(const threadsafe_list &other) = delete;
-
+    bool empty () const {
+        std::lock_guard<std::mutex> lk(last_ptr_mtx_);
+        return last_node_ptr_ ==  &head_;
+    }
     //满足谓词条件的节点删除
     template<typename predicate>
     void remove_if (predicate p) {

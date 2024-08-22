@@ -4,6 +4,19 @@
 #include <string>
 #include "thrdp.h"
 
+
+/*
+    async是一个函数
+    future对象不能拷贝，可以移动
+    shared future可以拷贝
+    promise对象不能拷贝可以移动
+    pactage task 不能拷贝可以移动
+*/
+
+/*
+    async源码分析
+    使用std::thread::__make_invoker将传入的参数封装成一个可调用对象__state = __future_base::_S_make_async_state调用
+*/
 // 模拟一个异步任务，比如从数据库中获取数据
 std::string fetchDataFromDB(std::string query) {
 	std::this_thread::sleep_for(std::chrono::seconds(5));
@@ -59,7 +72,7 @@ void thrpool_test () {
     ThreadPool pool;
     pool.start();
     int m = 0;
-    //std::ref实现了仿函数，把m封装到reference_wrapper里，实际是封装了m的地址，重载了括号运算符
+    //std::ref实现了仿函数，把m的地址封装到reference_wrapper里，返回这个reference_wrapper，重载了类型转换函数可以进行隐式类型转换
     //通过线程池要修改局部变量的值要么捕获局部变量的引用，要么就用ref包装传递参数
     pool.submitTask([](int &m) {
         m = 1024;

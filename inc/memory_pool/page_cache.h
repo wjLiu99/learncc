@@ -2,7 +2,8 @@
 #define _PAGE_CACHE_H_
 
 #include "comm.h"
-
+#include "ts_hash_tbl.h"
+#include "ts_list.h"
 // page cache为单例模式，多线程访问时要加锁
 // central cache从空闲的page列表中获取span
 
@@ -15,8 +16,11 @@ private:
     // 空闲的span链表， NPAGES是129，只用1 - 128表示该链表中span包含的页数
     // page_list[10] 表示这条链表中所有的span都包含10页内存空间
     span_list page_list_[NPAGES];
+
     std::mutex mtx_;
     std::unordered_map<page_id, span *> pageid_span_map_;
+    // ts_hash_tbl<page_id, span *> pageid_span_map_;
+    
 
 public:
     static page_cache &get_instance () {

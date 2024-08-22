@@ -32,6 +32,7 @@ enum  _loglevel {
     INFO = 1,
     WARNING = 2,
     ERROR = 3,
+    LOG_MAX = 4,
 };
 
 //异步日志任务

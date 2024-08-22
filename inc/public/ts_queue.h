@@ -328,7 +328,7 @@ private:
             if (!new_counter.internal_count &&
                 !new_counter.external_counters)
             {
-                delete this
+                delete this;
             }
         }
     };

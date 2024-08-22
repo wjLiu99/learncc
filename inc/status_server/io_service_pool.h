@@ -23,7 +23,7 @@ private:
 	std::vector<io_service> io_service_;
 	std::vector<work_ptr> works_;
 	std::vector<std::thread> threads_;
-	std::size_t                        next_ioservice_;
+	std::size_t   next_ioservice_;
 };
 
 

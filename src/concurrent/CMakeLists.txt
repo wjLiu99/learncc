@@ -11,4 +11,4 @@ include_directories(
 )
 find_package(Threads REQUIRED)
 add_executable(${PROJECT_NAME} ${SRC_LIST})
-target_link_libraries(${PROJECT_NAME} Threads::Threads threadpool)
+target_link_libraries(${PROJECT_NAME} Threads::Threads threadpool atomic)
