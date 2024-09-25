@@ -9,9 +9,9 @@
 #include <cppconn/statement.h>
 #include <cppconn/exception.h>
 
-class SqlConnection {
+class sql_connection {
 public:
-	SqlConnection(sql::Connection* con, int64_t lasttime):_con(con), _last_oper_time(lasttime){}
+	sql_connection(sql::Connection* con, int64_t lasttime):_con(con), _last_oper_time(lasttime){}
 	std::unique_ptr<sql::Connection> _con;
     // 上一次操作的时间，需要使连接保活
 	int64_t _last_oper_time;
@@ -27,15 +27,15 @@ public:
 				auto*  con = driver->connect(url_, user_, pass_);
 				con->setSchema(schema_);
 				// 获取当前时间戳
-				auto currentTime = std::chrono::system_clock::now().time_since_epoch();
+				auto current_time = std::chrono::system_clock::now().time_since_epoch();
 				// 将时间戳转换为秒
-				long long timestamp = std::chrono::duration_cast<std::chrono::seconds>(currentTime).count();
-				pool_.push(std::make_unique<SqlConnection>(con, timestamp));
+				long long timestamp = std::chrono::duration_cast<std::chrono::seconds>(current_time).count();
+				pool_.push(std::make_unique<sql_connection>(con, timestamp));
 			}
 
 			check_thread_ = 	std::thread([this]() {
 				while (!b_stop_) {
-					checkConnection();
+					check_connection();
 					std::this_thread::sleep_for(std::chrono::seconds(60));
 				}
 			});
@@ -48,13 +48,13 @@ public:
 		}
 	}
     // 检测连接时长是否超时
-	void checkConnection() {
+	void check_connection() {
 		std::lock_guard<std::mutex> guard(mutex_);
 		int poolsize = pool_.size();
 		// 获取当前时间戳
-		auto currentTime = std::chrono::system_clock::now().time_since_epoch();
+		auto current_time = std::chrono::system_clock::now().time_since_epoch();
 		// 将时间戳转换为秒
-		long long timestamp = std::chrono::duration_cast<std::chrono::seconds>(currentTime).count();
+		long long timestamp = std::chrono::duration_cast<std::chrono::seconds>(current_time).count();
 		for (int i = 0; i < poolsize; i++) {
 			auto con = std::move(pool_.front());
 			pool_.pop();
@@ -85,7 +85,7 @@ public:
 		}
 	}
 
-	std::unique_ptr<SqlConnection> get_conn() {
+	std::unique_ptr<sql_connection> get_conn() {
 		std::unique_lock<std::mutex> lock(mutex_);
 		cond_.wait(lock, [this] { 
 			if (b_stop_) {
@@ -95,12 +95,12 @@ public:
 		if (b_stop_) {
 			return nullptr;
 		}
-		std::unique_ptr<SqlConnection> con(std::move(pool_.front()));
+		std::unique_ptr<sql_connection> con(std::move(pool_.front()));
 		pool_.pop();
 		return con;
 	}
 
-	void return_conn(std::unique_ptr<SqlConnection> con) {
+	void return_conn(std::unique_ptr<sql_connection> con) {
 		std::unique_lock<std::mutex> lock(mutex_);
 		if (b_stop_) {
 			return;
@@ -127,7 +127,7 @@ private:
 	std::string pass_;
 	std::string schema_;    // 数据库名称
 	int pool_size_;
-	std::queue<std::unique_ptr<SqlConnection>> pool_;   //连接队列
+	std::queue<std::unique_ptr<sql_connection>> pool_;   //连接队列
 	std::mutex mutex_;
 	std::condition_variable cond_;
 	std::atomic<bool> b_stop_;

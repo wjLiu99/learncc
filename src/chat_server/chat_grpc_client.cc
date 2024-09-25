@@ -86,7 +86,7 @@ bool chat_grpc_client::get_base_info(std::string base_key, int uid, std::shared_
 		//redis中没有则查询mysql
 		//查询数据库
 		std::shared_ptr<user_info> user_info = nullptr;
-		user_info = MysqlMgr::get_instance()->GetUser(uid);
+		user_info = mysql_mgr::get_instance()->get_user(uid);
 		if (user_info == nullptr) {
 			return false;
 		}

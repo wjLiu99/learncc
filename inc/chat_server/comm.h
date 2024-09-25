@@ -43,7 +43,6 @@ enum errcode {
 	
 };
 
-
 // Defer类，函数无论在哪里返回时都要释放资源，归还连接或者发送数据
 class Defer {
 public:

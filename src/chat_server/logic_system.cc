@@ -77,7 +77,7 @@ void logic_system::reg_cbs() {
 	fun_callbacks_[MSG_CHAT_LOGIN] = std::bind(&logic_system::login_handler, this,
 		placeholders::_1, placeholders::_2, placeholders::_3);
 
-	fun_callbacks_[ID_SEARCH_USER_REQ] = std::bind(&logic_system::login_handler, this,
+	fun_callbacks_[ID_SEARCH_USER_REQ] = std::bind(&logic_system::search_info, this,
 		placeholders::_1, placeholders::_2, placeholders::_3);
 
 	fun_callbacks_[ID_ADD_FRIEND_REQ] = std::bind(&logic_system::add_friend_apply, this,
@@ -157,7 +157,7 @@ void logic_system::login_handler(shared_ptr<csession> session, const short &msg_
 			rtvalue["apply_list"].append(obj);
 		}
 	}
-
+	// 回包的json里面的apply  list和 friend list都是json对象，从数据库中差出来放到一个vector里，然后遍历数组生成json数据追加到大的json里
 	//获取好友列表
 	std::vector<std::shared_ptr<user_info>> friend_list;
 	bool b_friend_list = get_friend_list(uid, friend_list);
@@ -174,8 +174,8 @@ void logic_system::login_handler(shared_ptr<csession> session, const short &msg_
 	}
 
 
-	auto server_name = conf_mgr::get_instance().get_value("self_server", "Name");
-	//将登录数量增加
+	auto server_name = conf_mgr::get_instance().get_value("self_server", "name");
+	//将登录数量增加，使用redis的hash数据结构，先获取再+1再写入
 	auto rd_res = redis_mgr::get_instance()->hget(LOGIN_COUNT, server_name);
 	int count = 0;
 	if (!rd_res.empty()) {
@@ -199,7 +199,7 @@ void logic_system::login_handler(shared_ptr<csession> session, const short &msg_
 //从mysql获取好友列表
 bool logic_system::get_friend_list(int self_id, std::vector<std::shared_ptr<user_info>>& user_list) {
 	
-	return MysqlMgr::get_instance()->get_friend_list(self_id, user_list);
+	return mysql_mgr::get_instance()->get_friend_list(self_id, user_list);
 }
 
 // 查询用户信息 优先查redis 没有查到就去mysql查询并回写到redis
@@ -226,7 +226,7 @@ bool logic_system::get_base_info(std::string base_key, int uid, std::shared_ptr<
 		//redis中没有则查询mysql
 		//查询数据库
 		std::shared_ptr<user_info> u_info = nullptr;
-		u_info = MysqlMgr::get_instance()->GetUser(uid);
+		u_info = mysql_mgr::get_instance()->get_user(uid);
 		if (u_info == nullptr) {
 			return false;
 		}
@@ -252,7 +252,7 @@ bool logic_system::get_base_info(std::string base_key, int uid, std::shared_ptr<
 //从mysql获取好友申请列表
 bool logic_system::get_friend_apply_info(int to_uid, std::vector<std::shared_ptr<apply_info>> &list) {
 	
-	return MysqlMgr::get_instance()->GetApplyList(to_uid, list, 0, 10);
+	return mysql_mgr::get_instance()->get_apply_list(to_uid, list, 0, 10);
 }
 
 
@@ -292,10 +292,10 @@ void logic_system::auth_friend_apply(std::shared_ptr<csession> session, const sh
 		});
 
 	//先更新数据库
-	MysqlMgr::get_instance()->auth_friend_apply(uid, touid);
+	mysql_mgr::get_instance()->auth_friend_apply(uid, touid);
 
 	//更新数据库添加好友
-	MysqlMgr::get_instance()->AddFriend(uid, touid, back_name);
+	mysql_mgr::get_instance()->add_friend(uid, touid, back_name);
 
 	//查询redis 查找touid对应的server ip
 	auto to_str = std::to_string(touid);
@@ -487,7 +487,7 @@ void logic_system::get_user_byuid(std::string uid_str, Json::Value& rtvalue)
 	//redis中没有则查询mysql
 	//查询数据库
 	std::shared_ptr<user_info> u_info = nullptr;
-	u_info = MysqlMgr::get_instance()->GetUser(uid);
+	u_info = mysql_mgr::get_instance()->get_user(uid);
 	if (u_info == nullptr) {
 		rtvalue["err"] = ERR_UID;
 		return;
@@ -564,7 +564,7 @@ void logic_system::get_user_byname(std::string name, Json::Value& rtvalue)
 	//redis中没有则查询mysql
 	//查询数据库
 	std::shared_ptr<user_info> u_info = nullptr;
-	u_info = MysqlMgr::get_instance()->GetUser(name);
+	u_info = mysql_mgr::get_instance()->get_user(name);
 	if (u_info == nullptr) {
 		rtvalue["err"] = ERR_UID;
 		return;
@@ -616,7 +616,7 @@ void logic_system::add_friend_apply(std::shared_ptr<csession> session, const sho
 		});
 
 	//先更新数据库
-	MysqlMgr::get_instance()->add_friend_apply(uid, touid);
+	mysql_mgr::get_instance()->add_friend_apply(uid, touid);
 
 	//查询redis 查找touid对应的server ip
 	auto to_str = std::to_string(touid);

@@ -1,63 +1,63 @@
 #include "mysql_mgr.h"
 using namespace std;
 
-MysqlMgr::~MysqlMgr() {
+mysql_mgr::~mysql_mgr() {
 
 }
 
-int MysqlMgr::RegUser(const std::string& name, const std::string& email, const std::string& pwd)
+int mysql_mgr::reg_user(const std::string& name, const std::string& email, const std::string& pwd)
 {
-	return _dao.RegUser(name, email, pwd);
+	return _dao.reg_user(name, email, pwd);
 }
 
-bool MysqlMgr::CheckEmail(const std::string& name, const std::string& email) {
-	return _dao.CheckEmail(name, email);
+bool mysql_mgr::check_email(const std::string& name, const std::string& email) {
+	return _dao.check_email(name, email);
 }
 
-bool MysqlMgr::UpdatePwd(const std::string& name, const std::string& pwd) {
-	return _dao.UpdatePwd(name, pwd);
+bool mysql_mgr::update_pwd(const std::string& name, const std::string& pwd) {
+	return _dao.update_pwd(name, pwd);
 }
 
-MysqlMgr::MysqlMgr() {
+mysql_mgr::mysql_mgr() {
 }
 
-bool MysqlMgr::CheckPwd(const std::string& email, const std::string& pwd, user_info& userInfo) {
-	return _dao.CheckPwd(email, pwd, userInfo);
+bool mysql_mgr::check_pwd(const std::string& email, const std::string& pwd, user_info& userInfo) {
+	return _dao.check_pwd(email, pwd, userInfo);
 }
 
-bool MysqlMgr::TestProcedure(const std::string& email, int& uid, string& name) {
+bool mysql_mgr::TestProcedure(const std::string& email, int& uid, string& name) {
 	return _dao.TestProcedure(email,uid, name);
 }
 
-std::shared_ptr<user_info> MysqlMgr::GetUser(int uid) {
-	return _dao.GetUser(uid);
+std::shared_ptr<user_info> mysql_mgr::get_user(int uid) {
+	return _dao.get_user(uid);
 }
 
-std::shared_ptr<user_info> MysqlMgr::GetUser(std::string name)
+std::shared_ptr<user_info> mysql_mgr::get_user(std::string name)
 {
-	return _dao.GetUser(name);
+	return _dao.get_user(name);
 }
 
-bool MysqlMgr::GetApplyList(int touid, 
+bool mysql_mgr::get_apply_list(int touid, 
 	std::vector<std::shared_ptr<apply_info>>& applyList, int begin, int limit) {
 
-	return _dao.GetApplyList(touid, applyList, begin, limit);
+	return _dao.get_apply_list(touid, applyList, begin, limit);
 }
 
-bool MysqlMgr::add_friend_apply(const int& from, const int& to)
+bool mysql_mgr::add_friend_apply(const int& from, const int& to)
 {
 	return _dao.add_friend_apply(from, to);
 }
 
-bool MysqlMgr::auth_friend_apply(const int& from, const int& to) {
+bool mysql_mgr::auth_friend_apply(const int& from, const int& to) {
 	return _dao.auth_friend_apply(from, to);
 }
 
-bool MysqlMgr::AddFriend(const int& from, const int& to, std::string back_name) {
-	return _dao.AddFriend(from, to, back_name);
+bool mysql_mgr::add_friend(const int& from, const int& to, std::string back_name) {
+	return _dao.add_friend(from, to, back_name);
 }
 
-bool MysqlMgr::get_friend_list(int self_id, std::vector<std::shared_ptr<user_info> >& user_info) {
+bool mysql_mgr::get_friend_list(int self_id, std::vector<std::shared_ptr<user_info> >& user_info) {
 	return _dao.get_friend_list(self_id, user_info);
 }
 

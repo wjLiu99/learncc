@@ -11,11 +11,6 @@
 int main()
 {
 
-	int uid = mysql_mgr::get_instance()->reg_user("liuwenjie", "1333@qq.com", "123456");
-	if (uid == 0 || uid == -1) {
-        std::cout << " user or email exist" << std::endl;
- 
-	}
 
 	conf_mgr &cfg_mgr = conf_mgr::get_instance();
 	std::string gate_port_str = cfg_mgr["gate_server"]["port"];

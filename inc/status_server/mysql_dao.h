@@ -36,14 +36,14 @@ public:
 				pool_.push(std::make_unique<sql_connection>(con, timestamp));
 			}
 
-			_check_thread = 	std::thread([this]() {
+			check_thread_ = 	std::thread([this]() {
 				while (!b_stop_) {
 					check_conn();
 					std::this_thread::sleep_for(std::chrono::seconds(60));
 				}
 			});
 
-			_check_thread.detach();
+			check_thread_.detach();
 		}
 		catch (sql::SQLException& e) {
 			// 处理异常
@@ -134,7 +134,7 @@ private:
 	std::mutex mutex_;
 	std::condition_variable cond_;
 	std::atomic<bool> b_stop_;
-	std::thread _check_thread;  // 检测线程，如果连接超过一分钟没有使用就主动发送一次请求，保活
+	std::thread check_thread_;  // 检测线程，如果连接超过一分钟没有使用就主动发送一次请求，保活
 };
 
 struct UserInfo {

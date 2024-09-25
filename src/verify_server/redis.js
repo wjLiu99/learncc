@@ -20,6 +20,7 @@ RedisCli.on("error", function (err) {
  */
 async function GetRedis(key) {
     try{
+      // await 需要等待执行结果才会往下执行，要使用await需要将函数声明成异步
         const result = await RedisCli.get(key)
         if(result === null){
           console.log('result:','<'+result+'>', 'This key cannot be find...')

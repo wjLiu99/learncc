@@ -15,11 +15,12 @@ const redis_module = require('./redis')
 async function get_verify_code(call, callback) {
     console.log("email is ", call.request.email)
     try{
+        // 获取验证码之前可以先查询redis，如果没查到就生成uid并且写入redis
         let query_res = await redis_module.GetRedis(const_module.code_prefix+call.request.email);
         console.log("query_res is ", query_res)
   
         let uniqueId = query_res;
-        if(query_res ==null){
+        if(query_res == null){
             uniqueId = uuidv4();
             if (uniqueId.length > 4) {
                 uniqueId = uniqueId.substring(0, 4);

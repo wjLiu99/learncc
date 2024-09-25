@@ -1,7 +1,7 @@
 #include "mysql_dao.h"
 #include "conf_mgr.h"
 using namespace std;
-MysqlDao::MysqlDao()
+mysql_dao::mysql_dao()
 {
 	auto & cfg = conf_mgr::get_instance();
 	const auto& host = cfg["mysql"]["host"];
@@ -10,14 +10,14 @@ MysqlDao::MysqlDao()
 	const auto& schema = cfg["mysql"]["schema"];
 	const auto& user = cfg["mysql"]["user"];
     // unique ptr初始化只能在初始化列表或者reset
-	pool_.reset(new MySqlPool(host+":"+port, user, pwd,schema, 5));
+	pool_.reset(new mysql_pool(host+":"+port, user, pwd,schema, 5));
 }
 
-MysqlDao::~MysqlDao(){
+mysql_dao::~mysql_dao(){
 	pool_->close();
 }
 
-int MysqlDao::RegUser(const std::string& name, const std::string& email, const std::string& pwd)
+int mysql_dao::reg_user(const std::string& name, const std::string& email, const std::string& pwd)
 {
 	auto con = pool_->get_conn();
 	try {
@@ -57,7 +57,7 @@ int MysqlDao::RegUser(const std::string& name, const std::string& email, const s
 	}
 }
 
-bool MysqlDao::CheckEmail(const std::string& name, const std::string& email) {
+bool mysql_dao::check_email(const std::string& name, const std::string& email) {
 	auto con = pool_->get_conn();
 	try {
 		if (con == nullptr) {
@@ -94,7 +94,7 @@ bool MysqlDao::CheckEmail(const std::string& name, const std::string& email) {
 	}
 }
 
-bool MysqlDao::UpdatePwd(const std::string& name, const std::string& newpwd) {
+bool mysql_dao::update_pwd(const std::string& name, const std::string& newpwd) {
 	auto con = pool_->get_conn();
 	try {
 		if (con == nullptr) {
@@ -124,7 +124,7 @@ bool MysqlDao::UpdatePwd(const std::string& name, const std::string& newpwd) {
 	}
 }
 
-bool MysqlDao::CheckPwd(const std::string& email, const std::string& pwd, user_info& userInfo) {
+bool mysql_dao::check_pwd(const std::string& email, const std::string& pwd, user_info& userInfo) {
 	auto con = pool_->get_conn();
 	if (con == nullptr) {
 		return false;
@@ -169,7 +169,7 @@ bool MysqlDao::CheckPwd(const std::string& email, const std::string& pwd, user_i
 	}
 }
 
-bool MysqlDao::TestProcedure(const std::string& email, int& uid, string& name) {
+bool mysql_dao::TestProcedure(const std::string& email, int& uid, string& name) {
 	auto con = pool_->get_conn();
 	try {
 		if (con == nullptr) {
@@ -218,7 +218,7 @@ bool MysqlDao::TestProcedure(const std::string& email, int& uid, string& name) {
 	}
 }
 
-std::shared_ptr<user_info> MysqlDao::GetUser(int uid) {
+std::shared_ptr<user_info> mysql_dao::get_user(int uid) {
 	auto con = pool_->get_conn();
 	if (con == nullptr) {
 		return nullptr;
@@ -256,7 +256,7 @@ std::shared_ptr<user_info> MysqlDao::GetUser(int uid) {
 }
 
 
-bool MysqlDao::auth_friend_apply(const int& from, const int& to) {
+bool mysql_dao::auth_friend_apply(const int& from, const int& to) {
 	auto con = pool_->get_conn();
 	if (con == nullptr) {
 		return false;
@@ -291,7 +291,7 @@ bool MysqlDao::auth_friend_apply(const int& from, const int& to) {
 	return true;
 }
 
-bool MysqlDao::AddFriend(const int& from, const int& to, std::string back_name) {
+bool mysql_dao::add_friend(const int& from, const int& to, std::string back_name) {
 	auto con = pool_->get_conn();
 	if (con == nullptr) {
 		return false;
@@ -358,7 +358,7 @@ bool MysqlDao::AddFriend(const int& from, const int& to, std::string back_name) 
 }
 
 
-std::shared_ptr<user_info> MysqlDao::GetUser(std::string name)
+std::shared_ptr<user_info> mysql_dao::get_user(std::string name)
 {
 	auto con = pool_->get_conn();
 	if (con == nullptr) {
@@ -400,7 +400,7 @@ std::shared_ptr<user_info> MysqlDao::GetUser(std::string name)
 }
 
 
-bool MysqlDao::GetApplyList(int touid, std::vector<std::shared_ptr<apply_info>>& applyList, int begin, int limit) {
+bool mysql_dao::get_apply_list(int touid, std::vector<std::shared_ptr<apply_info>>& applyList, int begin, int limit) {
 	auto con = pool_->get_conn();
 	if (con == nullptr) {
 		return false;
@@ -419,7 +419,7 @@ bool MysqlDao::GetApplyList(int touid, std::vector<std::shared_ptr<apply_info>>&
 
 		pstmt->setInt(1, touid); // 将uid替换为你要查询的uid
 		pstmt->setInt(2, begin); // 起始id
-		pstmt->setInt(3, limit); //偏移量
+		pstmt->setInt(3, limit); // 偏移量
 		// 执行查询
 		std::unique_ptr<sql::ResultSet> res(pstmt->executeQuery());
 		// 遍历结果集
@@ -443,7 +443,7 @@ bool MysqlDao::GetApplyList(int touid, std::vector<std::shared_ptr<apply_info>>&
 }
 
 
-bool MysqlDao::add_friend_apply(const int& from, const int& to)
+bool mysql_dao::add_friend_apply(const int& from, const int& to)
 {
 	auto con = pool_->get_conn();
 	if (con == nullptr) {
@@ -479,7 +479,7 @@ bool MysqlDao::add_friend_apply(const int& from, const int& to)
 }
 
 
-bool MysqlDao::get_friend_list(int self_id, std::vector<std::shared_ptr<user_info> >& user_info_list) {
+bool mysql_dao::get_friend_list(int self_id, std::vector<std::shared_ptr<user_info> >& user_info_list) {
 
 	auto con = pool_->get_conn();
 	if (con == nullptr) {
@@ -504,7 +504,7 @@ bool MysqlDao::get_friend_list(int self_id, std::vector<std::shared_ptr<user_inf
 			auto friend_id = res->getInt("friend_id");
 			auto back = res->getString("back");
 			//再一次查询friend_id对应的信息
-			auto user_info = GetUser(friend_id);
+			auto user_info = get_user(friend_id);
 			if (user_info == nullptr) {
 				continue;
 			}
